@@ -1,0 +1,59 @@
+# ===============================
+# Python cache & bytecode
+# ===============================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# ===============================
+# Virtual Environment (DO NOT PUSH)
+# ===============================
+venv/
+.env
+.env.*
+venv
+
+# ===============================
+# Logs
+# ===============================
+*.log
+logs/
+
+# ===============================
+# OS & IDE junk
+# ===============================
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ===============================
+# Jupyter
+# ===============================
+.ipynb_checkpoints/
+
+# ===============================
+# Additional Python/Build/Env ignores
+# ===============================
+.coverage
+.coverage.*
+.cache
+.pytest_cache/
+.mypy_cache/
+.pyre/
+*.egg-info/
+build/
+dist/
+*.egg
+
+# Project-specific large artifacts
+outputs/
+uploads/
+static/output/
+static/upload/
+
+# Local settings and caches
+local_settings.py
+instance/
+.webassets-cache
