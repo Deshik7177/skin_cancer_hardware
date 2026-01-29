@@ -7,29 +7,29 @@
 
 <style>
 :root {
-  --bg-main: #0d1117;
-  --bg-panel: #161b22;
-  --bg-card: #0b0f14;
-  --border: #30363d;
-  --text-main: #c9d1d9;
-  --text-muted: #8b949e;
-  --accent-blue: #58a6ff;
-  --accent-green: #2ea043;
-  --accent-red: #f85149;
-  --accent-orange: #fb8500;
+  --bg-main: #0f1419;
+  --bg-panel: #1a1f2e;
+  --bg-card: #141820;
+  --border: #2d3748;
+  --text-main: #e2e8f0;
+  --text-muted: #a0aec0;
+  --accent-blue: #00d4ff;
+  --accent-green: #10b981;
+  --accent-red: #ef4444;
+  --accent-orange: #f97316;
 }
 
 html.light-mode {
-  --bg-main: #ffffff;
-  --bg-panel: #f6f8fa;
+  --bg-main: #f8fafc;
+  --bg-panel: #f1f5f9;
   --bg-card: #ffffff;
-  --border: #d0d7de;
-  --text-main: #24292f;
-  --text-muted: #57606a;
-  --accent-blue: #0969da;
-  --accent-green: #1a7f37;
-  --accent-red: #d1242f;
-  --accent-orange: #fb8500;
+  --border: #cbd5e1;
+  --text-main: #0f172a;
+  --text-muted: #475569;
+  --accent-blue: #0084d4;
+  --accent-green: #059669;
+  --accent-red: #dc2626;
+  --accent-orange: #ea580c;
 }
 
 * {
@@ -622,11 +622,34 @@ button:disabled {
         <p>Upload a skin lesion image to get started with AI-powered detection</p>
       </div>
 
-      <div class="upload-container" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+      <!-- Upload/Camera Toggle -->
+      <div style="display: flex; gap: 12px; margin-bottom: 24px;">
+        <button id="uploadTabBtn" class="active" onclick="switchTab('upload')" style="flex: 1; background: linear-gradient(135deg, var(--accent-blue), var(--accent-blue)); color: white;">📤 Upload File</button>
+        <button id="cameraTabBtn" onclick="switchTab('camera')" style="flex: 1; background: transparent; color: var(--accent-blue); border: 1px solid var(--accent-blue);">📷 Use Camera</button>
+      </div>
+
+      <!-- UPLOAD TAB -->
+      <div id="uploadTab" class="upload-container" onclick="document.getElementById('fileInput').click()">
         <div class="upload-icon">📸</div>
         <h3>Click to upload or drag and drop</h3>
         <p>PNG, JPG, GIF up to 50MB</p>
         <input type="file" id="fileInput" accept="image/*">
+      </div>
+
+      <!-- CAMERA TAB -->
+      <div id="cameraTab" style="display: none;">
+        <div id="cameraSetup" style="display: flex; flex-direction: column; gap: 16px;">
+          <button onclick="startCamera()" style="width: 100%; padding: 16px; font-size: 16px;">🎥 Start Camera</button>
+        </div>
+
+        <div id="cameraStream" style="display: none; display: flex; flex-direction: column; gap: 16px;">
+          <video id="videoElement" playsinline autoplay muted style="width: 100%; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-card); max-height: 500px;"></video>
+          <canvas id="captureCanvas" style="display: none;"></canvas>
+          <div style="display: flex; gap: 12px;">
+            <button id="captureBtn" onclick="captureFrame()" style="flex: 1; padding: 14px; font-size: 16px;">📸 Capture Photo</button>
+            <button class="secondary" onclick="stopCamera()" style="flex: 1; padding: 14px; font-size: 16px;">✕ Stop Camera</button>
+          </div>
+        </div>
       </div>
 
       <div id="homePreview" style="margin-top: 24px; display: none;">
@@ -720,11 +743,11 @@ function showPage(pageName) {
 
 // ===== FILE UPLOAD =====
 const fileInput = document.getElementById("fileInput");
-const uploadZone = document.getElementById("uploadZone");
 const previewImg = document.getElementById("previewImg");
 const homePreview = document.getElementById("homePreview");
 
 // Drag and drop
+const uploadZone = document.getElementById("uploadTab");
 uploadZone.addEventListener("dragover", (e) => {
   e.preventDefault();
   uploadZone.classList.add("dragover");
@@ -765,6 +788,90 @@ function resetUpload() {
   homePreview.style.display = "none";
   uploadZone.style.display = "block";
   currentDetectionResult = null;
+}
+
+// ===== CAMERA FUNCTIONALITY =====
+let cameraStream = null;
+
+function switchTab(tab) {
+  const uploadTab = document.getElementById("uploadTab");
+  const cameraTab = document.getElementById("cameraTab");
+  const uploadTabBtn = document.getElementById("uploadTabBtn");
+  const cameraTabBtn = document.getElementById("cameraTabBtn");
+
+  if (tab === "upload") {
+    uploadTab.style.display = "block";
+    cameraTab.style.display = "none";
+    uploadTabBtn.style.background = "linear-gradient(135deg, var(--accent-blue), var(--accent-blue))";
+    uploadTabBtn.style.color = "white";
+    uploadTabBtn.style.border = "none";
+    cameraTabBtn.style.background = "transparent";
+    cameraTabBtn.style.color = "var(--accent-blue)";
+    cameraTabBtn.style.border = "1px solid var(--accent-blue)";
+    stopCamera();
+  } else {
+    uploadTab.style.display = "none";
+    cameraTab.style.display = "block";
+    uploadTabBtn.style.background = "transparent";
+    uploadTabBtn.style.color = "var(--accent-blue)";
+    uploadTabBtn.style.border = "1px solid var(--accent-blue)";
+    cameraTabBtn.style.background = "linear-gradient(135deg, var(--accent-blue), var(--accent-blue))";
+    cameraTabBtn.style.color = "white";
+    cameraTabBtn.style.border = "none";
+  }
+}
+
+async function startCamera() {
+  try {
+    const video = document.getElementById("videoElement");
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false
+    });
+    
+    video.srcObject = cameraStream;
+    document.getElementById("cameraSetup").style.display = "none";
+    document.getElementById("cameraStream").style.display = "flex";
+  } catch (error) {
+    console.error("Error accessing camera:", error);
+    alert("Unable to access camera. Please check permissions.");
+  }
+}
+
+function stopCamera() {
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(track => track.stop());
+    cameraStream = null;
+  }
+  document.getElementById("cameraSetup").style.display = "flex";
+  document.getElementById("cameraStream").style.display = "none";
+}
+
+function captureFrame() {
+  const video = document.getElementById("videoElement");
+  const canvas = document.getElementById("captureCanvas");
+  const ctx = canvas.getContext("2d");
+
+  // Set canvas dimensions to match video
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+
+  // Draw video frame to canvas
+  ctx.drawImage(video, 0, 0);
+
+  // Convert canvas to blob and create file
+  canvas.toBlob((blob) => {
+    const file = new File([blob], "camera_capture.jpg", { type: "image/jpeg" });
+    
+    // Create a FileList-like object
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file);
+    fileInput.files = dataTransfer.files;
+
+    // Stop camera and run detection directly
+    stopCamera();
+    runDetection();
+  }, "image/jpeg", 0.95);
 }
 
 // ===== DETECTION =====
@@ -812,8 +919,17 @@ function displayResults(data) {
   
   if (!data.detections || data.detections.length === 0) {
     resultsContent.innerHTML = `
-      <div class="no-data">
-        <p>⚠️ No lesions detected in the image</p>
+      <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 24px;">
+        <div style="text-align: center;">
+          <div style="font-size: 64px; margin-bottom: 16px;">✅</div>
+          <h2 style="margin: 0 0 12px 0; font-size: 24px; color: var(--accent-green);">No Skin Lesion Detected</h2>
+          <p style="margin: 0; color: var(--text-muted); font-size: 15px; max-width: 400px;">
+            This image appears to be healthy skin with no detectable lesions. This is a good sign!
+          </p>
+        </div>
+        <button onclick="resetAndUploadNew()" style="padding: 12px 32px; font-size: 16px;">
+          📤 Analyze Another Image
+        </button>
       </div>
     `;
     return;

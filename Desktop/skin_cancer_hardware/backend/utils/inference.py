@@ -12,7 +12,7 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 model = YOLO(str(MODEL_PATH))
 
 def run_inference(image_path: Path):
-    results = model.predict(source=str(image_path), conf=0.25, verbose=False)
+    results = model.predict(source=str(image_path), conf=0.5, verbose=False)
 
     img = cv2.imread(str(image_path))
     detections = []
